@@ -1,0 +1,164 @@
+{
+  "name": "audit-extension",
+  "displayName": "Audit Extension",
+  "description": "Revue de code assistée et audit de sécurité à architecture orientée plugins (Ansible, Docker, Packer, Python, JS, C/C++, HTML).",
+  "version": "0.1.0",
+  "publisher": "audit-lab",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Audit Extension",
+      "properties": {
+        "audit.llm.mode": {
+          "type": "string",
+          "enum": [
+            "local",
+            "llm-local",
+            "remote-agent"
+          ],
+          "enumDescriptions": [
+            "Aucun code ne quitte la machine. Analyse via LSP/Tree-sitter/linters uniquement.",
+            "Connexion à un modèle local (Ollama, LM Studio, vLLM). Aucune donnée transmise sur Internet.",
+            "Agent distant (Windsurf). Désactivé par défaut, requiert une autorisation explicite."
+          ],
+          "default": "local",
+          "description": "Mode d'analyse par IA."
+        },
+        "audit.llm.localEndpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:11434",
+          "description": "Point de terminaison du modèle local (mode llm-local)."
+        },
+        "audit.remoteAgent.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Active le connecteur d'agent distant (Windsurf). Doit rester désactivé pour les projets sensibles."
+        },
+        "audit.exclusionGlobs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.pem",
+            "**/secrets.yml",
+            "**/secrets.yaml",
+            "**/inventory",
+            "**/.env"
+          ],
+          "description": "Motifs de fichiers jamais transmis à un service externe."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "audit-explorer",
+          "title": "Audit",
+          "icon": "$(shield)"
+        }
+      ]
+    },
+    "views": {
+      "audit-explorer": [
+        {
+          "id": "audit.annotations",
+          "name": "Annotations"
+        },
+        {
+          "id": "audit.trustGraph",
+          "name": "Graphe de confiance"
+        },
+        {
+          "id": "audit.knowledge",
+          "name": "Base de connaissances"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "audit.scanWorkspace",
+        "title": "Audit : Analyser l'espace de travail",
+        "icon": "$(search)"
+      },
+      {
+        "command": "audit.addAnnotation",
+        "title": "Audit : Ajouter une annotation"
+      },
+      {
+        "command": "audit.setNodeState",
+        "title": "Audit : Changer l'état d'un nœud de confiance"
+      },
+      {
+        "command": "audit.exportObsidian",
+        "title": "Audit : Créer une note Obsidian"
+      },
+      {
+        "command": "audit.refreshViews",
+        "title": "Audit : Rafraîchir les vues",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "audit.refreshViews",
+          "when": "view == audit.annotations",
+          "group": "navigation"
+        },
+        {
+          "command": "audit.scanWorkspace",
+          "when": "view == audit.annotations",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "audit.addAnnotation",
+          "group": "audit@1"
+        },
+        {
+          "command": "audit.exportObsidian",
+          "group": "audit@2"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "audit.exportObsidian",
+        "key": "ctrl+shift+o",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  }
+}

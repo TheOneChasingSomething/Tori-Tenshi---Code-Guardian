@@ -1,6 +1,6 @@
 import { Id } from '../core/Types';
 
-/** Arête orientée entre deux nœuds du graphe de confiance. */
+/** Directed edge between two nodes of the trust graph. */
 export interface TrustEdge {
   id: Id;
   fromId: Id;

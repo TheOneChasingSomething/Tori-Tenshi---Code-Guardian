@@ -1,6 +1,6 @@
 /**
- * Type Result minimaliste pour un traitement d'erreurs explicite,
- * sans recourir systématiquement aux exceptions dans le domaine.
+ * Minimal Result type for explicit error handling, avoiding systematic
+ * reliance on exceptions within the domain layer.
  */
 export type Result<T, E = Error> =
   | { ok: true; value: T }
@@ -14,7 +14,7 @@ export function Err<E>(error: E): Result<never, E> {
   return { ok: false, error };
 }
 
-/** Exécute une fonction et capture toute exception dans un Result. */
+/** Runs a function and captures any thrown error into a Result. */
 export function tryCatch<T>(fn: () => T): Result<T, Error> {
   try {
     return Ok(fn());

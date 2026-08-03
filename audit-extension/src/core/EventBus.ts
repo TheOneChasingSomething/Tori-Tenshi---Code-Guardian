@@ -1,7 +1,7 @@
 /**
- * Bus d'événements typé et découplé.
- * Permet aux couches (persistance, analyse, UI) de communiquer sans
- * dépendances directes, ce qui facilite les tests et l'ajout de plugins.
+ * Typed, decoupled event bus.
+ * Lets layers (persistence, analysis, UI) communicate without direct
+ * dependencies, which eases testing and the addition of plugins.
  */
 export type EventMap = {
   'annotation:changed': { file: string };
@@ -22,7 +22,7 @@ export class EventBus {
       this.handlers.set(event, set);
     }
     set.add(handler as Handler<unknown>);
-    // Retourne une fonction de désabonnement (pattern Disposable).
+    // Returns an unsubscribe function (Disposable pattern).
     return () => set!.delete(handler as Handler<unknown>);
   }
 

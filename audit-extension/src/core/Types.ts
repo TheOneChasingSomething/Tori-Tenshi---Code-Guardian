@@ -1,15 +1,15 @@
 /**
- * Types transverses partagés par l'ensemble des couches de l'extension.
- * Aucune dépendance vers l'API VS Code ici : ces types doivent rester
- * testables en isolation (règle d'architecture hexagonale).
+ * Cross-cutting types shared by every layer of the extension.
+ * No dependency on the VS Code API here: these types must remain
+ * testable in isolation (hexagonal-architecture rule).
  */
 
-/** Identifiant opaque d'une entité persistée. */
+/** Opaque identifier of a persisted entity. */
 export type Id = number;
 
-/** Position dans un fichier source (0-based, convention VS Code). */
+/** Position inside a source file (0-based, VS Code convention). */
 export interface SourceRange {
-  file: string;      // chemin relatif à la racine de l'espace de travail
+  file: string;      // path relative to the workspace root
   startLine: number;
   startChar: number;
   endLine: number;
@@ -17,18 +17,18 @@ export interface SourceRange {
 }
 
 /**
- * État d'un nœud dans le graphe de confiance.
- * Reprend les cinq états définis dans le cahier des charges.
+ * State of a node in the trust graph.
+ * Mirrors the five states defined in the specification.
  */
 export enum TrustState {
-  Unreviewed = 'unreviewed', // Non revu
-  InProgress = 'in-progress', // En cours
-  Validated = 'validated',    // Validé
-  AtRisk = 'at-risk',         // À risque
-  Documented = 'documented',  // Documenté
+  Unreviewed = 'unreviewed',
+  InProgress = 'in-progress',
+  Validated = 'validated',
+  AtRisk = 'at-risk',
+  Documented = 'documented',
 }
 
-/** Sévérité d'un constat produit par un analyseur. */
+/** Severity of a finding produced by an analyzer. */
 export enum Severity {
   Info = 'info',
   Low = 'low',
@@ -37,14 +37,14 @@ export enum Severity {
   Critical = 'critical',
 }
 
-/** Mode de fonctionnement du connecteur IA. */
+/** Operating mode of the AI connector. */
 export enum LlmMode {
   Local = 'local',
   LlmLocal = 'llm-local',
   RemoteAgent = 'remote-agent',
 }
 
-/** Nature d'un nœud du graphe (extensible par les plugins). */
+/** Nature of a graph node (extensible by plugins). */
 export type NodeKind =
   | 'function'
   | 'ansible-task'
@@ -56,8 +56,8 @@ export type NodeKind =
   | 'unknown';
 
 /**
- * Constat émis par un analyseur de plugin.
- * Sera converti en Diagnostic VS Code par la couche UI.
+ * Finding emitted by a plugin analyzer.
+ * Converted into a VS Code Diagnostic by the UI layer.
  */
 export interface Finding {
   pluginId: string;
@@ -67,29 +67,29 @@ export interface Finding {
   range: SourceRange;
 }
 
-/** Nœud logique découvert par un analyseur, avant persistance. */
+/** Logical node discovered by an analyzer, before persistence. */
 export interface DiscoveredNode {
-  key: string;        // clé stable (ex. "docker:image:ubuntu:22.04")
+  key: string;        // stable key (e.g. "docker:image:ubuntu:22.04")
   label: string;
   kind: NodeKind;
   range?: SourceRange;
 }
 
-/** Arête (dépendance) entre deux nœuds découverts. */
+/** Edge (dependency) between two discovered nodes. */
 export interface DiscoveredEdge {
   fromKey: string;
   toKey: string;
   label?: string;
 }
 
-/** Résultat complet d'une passe d'analyse d'un plugin sur un fichier. */
+/** Full result of a plugin analysis pass over a single file. */
 export interface AnalysisResult {
   findings: Finding[];
   nodes: DiscoveredNode[];
   edges: DiscoveredEdge[];
 }
 
-/** Fabrique d'un résultat d'analyse vide (évite les null). */
+/** Factory for an empty analysis result (avoids nulls). */
 export function emptyAnalysis(): AnalysisResult {
   return { findings: [], nodes: [], edges: [] };
 }

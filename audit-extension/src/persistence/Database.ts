@@ -5,13 +5,12 @@ import { Logger } from '../core/Logger';
 import { MIGRATIONS } from './migrations';
 
 /**
- * Enveloppe fine autour de better-sqlite3 (pilote synchrone, standard pour
- * les extensions VS Code car il évite la gestion de callbacks asynchrones
- * dans les fournisseurs de TreeView).
+ * Thin wrapper around better-sqlite3 (synchronous driver, standard for VS Code
+ * extensions because it avoids handling asynchronous callbacks inside
+ * TreeView providers).
  *
- * La base est stockée dans le `storageUri` global de l'extension : un fichier
- * unique par espace de travail, conforme au modèle « fichier unique » de
- * SQLite [4].
+ * The database lives in the extension's global `storageUri`: a single file per
+ * workspace, matching SQLite's single-file model [4].
  */
 export class AuditDatabase {
   private readonly db: Database.Database;
@@ -21,8 +20,8 @@ export class AuditDatabase {
   }
 
   /**
-   * Ouvre (ou crée) la base au chemin donné, active les clés étrangères et
-   * le mode WAL, puis applique les migrations en attente.
+   * Opens (or creates) the database at the given path, enables foreign keys
+   * and WAL mode, then applies any pending migrations.
    */
   static open(storageDir: string, logger: Logger): AuditDatabase {
     fs.mkdirSync(storageDir, { recursive: true });
@@ -33,11 +32,11 @@ export class AuditDatabase {
 
     const instance = new AuditDatabase(raw);
     instance.migrate(logger);
-    logger.info(`Base ouverte : ${file}`);
+    logger.info(`Database opened: ${file}`);
     return instance;
   }
 
-  /** Applique séquentiellement les migrations non encore exécutées. */
+  /** Applies, in order, the migrations not yet executed. */
   private migrate(logger: Logger): void {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)'
@@ -54,13 +53,13 @@ export class AuditDatabase {
         }
         this.db.exec(migration.up);
         record.run(migration.version, new Date().toISOString());
-        logger.info(`Migration ${migration.version} appliquée : ${migration.name}`);
+        logger.info(`Migration ${migration.version} applied: ${migration.name}`);
       }
     });
     run();
   }
 
-  /** Accès de bas niveau réservé aux dépôts (repositories). */
+  /** Low-level access reserved for repositories. */
   get handle(): Database.Database {
     return this.db;
   }

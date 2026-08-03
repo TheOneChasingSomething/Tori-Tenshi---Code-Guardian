@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 import { LlmMode } from './Types';
 
 /**
- * Façade typée au-dessus de `vscode.workspace.getConfiguration('audit')`.
- * Centralise la lecture des paramètres et applique la politique de
- * confidentialité définie dans le cahier des charges (trois modes IA,
- * connecteur distant désactivé par défaut, motifs d'exclusion).
+ * Typed facade over `vscode.workspace.getConfiguration('audit')`.
+ * Centralizes reading of settings and enforces the privacy policy defined in
+ * the specification (three AI modes, remote connector disabled by default,
+ * exclusion globs).
  */
 export class Configuration {
   private cfg(): vscode.WorkspaceConfiguration {
@@ -36,19 +36,41 @@ export class Configuration {
     return this.cfg().get<string[]>('exclusionGlobs', []);
   }
 
+  // --- Obsidian integration ------------------------------------------------
+
+  /** Absolute path to the Obsidian vault root (empty disables export). */
+  get obsidianVaultPath(): string {
+    return this.cfg().get<string>('obsidian.vaultPath', '');
+  }
+
+  /** Knowledge root folder inside the vault (vault convention: 5_Knowledges). */
+  get obsidianKnowledgeRoot(): string {
+    return this.cfg().get<string>('obsidian.knowledgeRoot', '5_Knowledges');
+  }
+
+  /** Default note type used when exporting an audit note. */
+  get obsidianDefaultNoteType(): import('../models/KnowledgeNote').ObsidianNoteType {
+    return this.cfg().get<import('../models/KnowledgeNote').ObsidianNoteType>('obsidian.defaultNoteType', 'gist');
+  }
+
+  /** Name of the index note to reference in each note's Knowledge-index field. */
+  get obsidianKnowledgeIndex(): string {
+    return this.cfg().get<string>('obsidian.knowledgeIndex', '');
+  }
+
   /**
-   * Détermine si le mode « agent distant » (Windsurf) est réellement
-   * utilisable : il faut à la fois que le mode soit sélectionné ET que
-   * le drapeau explicite soit activé. Double barrière volontaire.
+   * Determines whether the "remote agent" (Windsurf) mode is actually usable:
+   * both the mode must be selected AND the explicit flag enabled. Deliberate
+   * double barrier.
    */
   isRemoteAgentUsable(): boolean {
     return this.llmMode === LlmMode.RemoteAgent && this.remoteAgentEnabled;
   }
 
   /**
-   * Vérifie qu'un fichier n'est pas exclu de toute transmission externe.
-   * Conversion naïve glob -> RegExp suffisante pour les motifs simples
-   * (`**`, `*`) ; sera remplacée par `minimatch` en Phase 6.
+   * Checks that a file is not excluded from any external transmission.
+   * Naive glob -> RegExp conversion, sufficient for simple patterns
+   * (`**`, `*`); to be replaced by `minimatch` in Phase 6.
    */
   isTransmittable(relativePath: string): boolean {
     const normalized = relativePath.replace(/\\/g, '/');

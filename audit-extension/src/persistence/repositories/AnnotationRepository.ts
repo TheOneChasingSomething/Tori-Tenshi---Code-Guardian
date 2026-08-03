@@ -16,7 +16,7 @@ interface Row {
   updated_at: string;
 }
 
-/** Persistance des annotations et de leur historique de révisions. */
+/** Persistence of annotations and their revision history. */
 export class AnnotationRepository {
   constructor(private readonly db: AuditDatabase) {}
 
@@ -62,7 +62,7 @@ export class AnnotationRepository {
     return { id, range: input.range, body: input.body, author: input.author, revision: 1, createdAt: now, updatedAt: now };
   }
 
-  /** Édite une annotation : incrémente la révision et archive l'ancien corps. */
+  /** Edits an annotation: bumps the revision and archives the previous body. */
   edit(id: Id, body: string): void {
     const now = new Date().toISOString();
     const h = this.db.handle;
@@ -94,6 +94,27 @@ export class AnnotationRepository {
     return (this.db.handle.prepare('SELECT * FROM annotations ORDER BY file, start_line').all() as Row[]).map(
       AnnotationRepository.map
     );
+  }
+
+  /** Updates only the anchor range of an annotation (used by re-anchoring). */
+  updateRange(id: Id, startLine: number, startChar: number, endLine: number, endChar: number): void {
+    this.db.handle
+      .prepare('UPDATE annotations SET start_line = ?, start_char = ?, end_line = ?, end_char = ? WHERE id = ?')
+      .run(startLine, startChar, endLine, endChar, id);
+  }
+
+  findById(id: Id): Annotation | undefined {
+    const row = this.db.handle.prepare('SELECT * FROM annotations WHERE id = ?').get(id) as Row | undefined;
+    return row ? AnnotationRepository.map(row) : undefined;
+  }
+
+  /** Full revision history of an annotation, newest first. */
+  getRevisions(id: Id): { revision: number; body: string; createdAt: string }[] {
+    return (
+      this.db.handle
+        .prepare('SELECT revision, body, created_at FROM annotation_revisions WHERE annotation_id = ? ORDER BY revision DESC')
+        .all(id) as { revision: number; body: string; created_at: string }[]
+    ).map((r) => ({ revision: r.revision, body: r.body, createdAt: r.created_at }));
   }
 
   delete(id: Id): void {

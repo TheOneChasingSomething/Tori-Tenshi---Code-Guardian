@@ -3,52 +3,52 @@ import { Logger } from '../core/Logger';
 import { Configuration } from '../core/Configuration';
 
 /**
- * Contexte fourni à chaque plugin à son initialisation. Il expose des
- * services partagés sans coupler le plugin au reste de l'extension :
- * un plugin ne connaît que cette interface.
+ * Context provided to each plugin at initialization. It exposes shared services
+ * without coupling the plugin to the rest of the extension: a plugin knows only
+ * this interface.
  */
 export interface PluginContext {
   readonly logger: Logger;
   readonly config: Configuration;
 }
 
-/** Document à analyser, transmis au plugin sous forme neutre. */
+/** Document to analyze, passed to the plugin in a neutral form. */
 export interface AnalyzableDocument {
-  /** Chemin relatif à la racine de l'espace de travail. */
+  /** Path relative to the workspace root. */
   relativePath: string;
-  /** Identifiant de langage VS Code (ex. "dockerfile", "yaml", "python"). */
+  /** VS Code language identifier (e.g. "dockerfile", "yaml", "python"). */
   languageId: string;
-  /** Contenu textuel du fichier. */
+  /** Text content of the file. */
   text: string;
 }
 
 /**
- * Contrat que doit implémenter chaque analyseur technologique.
- * L'ajout d'un langage se limite à fournir une nouvelle implémentation :
- * aucune modification du cœur n'est requise (principe ouvert/fermé).
+ * Contract that every technology analyzer must implement. Adding a language is
+ * limited to providing a new implementation: no change to the core is required
+ * (open/closed principle).
  */
 export interface AuditPlugin {
-  /** Identifiant unique et stable (ex. "docker", "ansible"). */
+  /** Unique, stable identifier (e.g. "docker", "ansible"). */
   readonly id: string;
 
-  /** Nom lisible affiché dans l'interface. */
+  /** Human-readable name shown in the UI. */
   readonly displayName: string;
 
   /**
-   * Langages ou extensions pris en charge. Utilisé par le PluginManager
-   * pour router un document vers les bons analyseurs.
+   * Supported languages or extensions. Used by the PluginManager to route a
+   * document to the right analyzers.
    */
   readonly languageIds: string[];
 
-  /** Initialisation optionnelle (chargement de grammaires, LSP, etc.). */
+  /** Optional initialization (loading grammars, LSP clients, etc.). */
   activate?(ctx: PluginContext): void | Promise<void>;
 
   /**
-   * Analyse statique d'un document. Doit être pure : pas d'effet de bord,
-   * pas d'accès disque hors du texte fourni. Renvoie constats + nœuds/arêtes.
+   * Static analysis of a document. Must be pure: no side effects, no disk
+   * access beyond the provided text. Returns findings plus nodes/edges.
    */
   analyze(doc: AnalyzableDocument, ctx: PluginContext): AnalysisResult | Promise<AnalysisResult>;
 
-  /** Libération des ressources éventuelles. */
+  /** Release of any held resources. */
   dispose?(): void;
 }

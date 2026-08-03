@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 
 /**
- * Journalisation centralisée via un OutputChannel VS Code.
- * Un seul canal partagé pour toute l'extension, injecté aux composants.
+ * Centralized logging through a VS Code OutputChannel.
+ * A single shared channel for the whole extension, injected into components.
  */
 export class Logger {
   private readonly channel: vscode.OutputChannel;

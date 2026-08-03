@@ -2,13 +2,13 @@ import * as vscode from 'vscode';
 import { AnnotationRepository } from '../persistence/repositories/AnnotationRepository';
 import { Annotation } from '../models/Annotation';
 
-/** Nœud d'arbre : soit un fichier (regroupement), soit une annotation. */
+/** Tree node: either a file (grouping) or an annotation. */
 type Node = { kind: 'file'; file: string } | { kind: 'annotation'; annotation: Annotation };
 
 /**
- * Fournit l'arbre « Annotations » : les fichiers en premier niveau, les
- * annotations correspondantes en second. Sélectionner une annotation ouvre
- * le fichier à la bonne position.
+ * Provides the "Annotations" tree: files at the first level, matching
+ * annotations at the second. Selecting an annotation opens the file at the
+ * right position.
  */
 export class AuditTreeProvider implements vscode.TreeDataProvider<Node> {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
@@ -30,12 +30,12 @@ export class AuditTreeProvider implements vscode.TreeDataProvider<Node> {
     const a = node.annotation;
     const label = a.body.length > 60 ? a.body.slice(0, 57) + '…' : a.body;
     const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
-    item.description = `L${a.range.startLine + 1} · rév.${a.revision}`;
+    item.description = `L${a.range.startLine + 1} · rev.${a.revision}`;
     item.iconPath = new vscode.ThemeIcon('note');
     item.contextValue = 'auditAnnotation';
     item.command = {
       command: 'vscode.open',
-      title: 'Ouvrir',
+      title: 'Open',
       arguments: [
         vscode.Uri.file(a.range.file),
         { selection: new vscode.Range(a.range.startLine, a.range.startChar, a.range.endLine, a.range.endChar) },

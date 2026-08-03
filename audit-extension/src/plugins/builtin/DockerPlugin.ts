@@ -2,14 +2,14 @@ import { AuditPlugin, AnalyzableDocument, PluginContext } from '../AuditPlugin';
 import { AnalysisResult, DiscoveredNode, DiscoveredEdge, Finding, Severity, emptyAnalysis } from '../../core/Types';
 
 /**
- * Analyseur Dockerfile intégré. Les heuristiques ci-dessous sont volontairement
- * simples (analyse ligne à ligne) et servent de référence d'implémentation du
- * contrat AuditPlugin ; la Phase 3 les remplacera par un parcours Tree-sitter [3].
+ * Built-in Dockerfile analyzer. The heuristics below are deliberately simple
+ * (line-by-line scanning) and act as a reference implementation of the
+ * AuditPlugin contract; Phase 3 will replace them with a Tree-sitter walk [3].
  *
- * Règles couvertes :
- *  - DKR001 : image de base non figée (`latest` ou tag absent).
- *  - DKR002 : conteneur exécuté en root (absence d'instruction USER).
- *  - DKR003 : usage de `ADD` avec URL distante (préférer COPY).
+ * Rules covered:
+ *  - DKR001: unpinned base image (`latest` or missing tag).
+ *  - DKR002: container running as root (no USER instruction).
+ *  - DKR003: use of `ADD` with a remote URL (prefer COPY).
  */
 export class DockerPlugin implements AuditPlugin {
   readonly id = 'docker';
@@ -33,7 +33,7 @@ export class DockerPlugin implements AuditPlugin {
 
         if (!image.includes('@sha256:') && (!image.includes(':') || image.endsWith(':latest'))) {
           result.findings.push(
-            this.finding('DKR001', `Image de base non figée : « ${image} ». Épinglez un tag ou un digest.`, Severity.Medium, doc.relativePath, index)
+            this.finding('DKR001', `Unpinned base image: "${image}". Pin a tag or a digest.`, Severity.Medium, doc.relativePath, index)
           );
         }
       }
@@ -44,18 +44,18 @@ export class DockerPlugin implements AuditPlugin {
 
       if (/^ADD\s+https?:\/\//i.test(trimmed)) {
         result.findings.push(
-          this.finding('DKR003', 'Instruction ADD avec URL distante : préférez COPY ou un téléchargement vérifié.', Severity.Low, doc.relativePath, index)
+          this.finding('DKR003', 'ADD with a remote URL: prefer COPY or a verified download.', Severity.Low, doc.relativePath, index)
         );
       }
     });
 
     if (!hasUser && lines.some((l) => l.trim().toUpperCase().startsWith('FROM '))) {
       result.findings.push(
-        this.finding('DKR002', 'Aucune instruction USER : le conteneur s’exécutera en root.', Severity.High, doc.relativePath, 0)
+        this.finding('DKR002', 'No USER instruction: the container will run as root.', Severity.High, doc.relativePath, 0)
       );
     }
 
-    // Nœud « fichier » relié à l'image de base, pour amorcer le graphe de confiance.
+    // A "file" node linked to the base image, to seed the trust graph.
     const fileKey = `file:${doc.relativePath}`;
     result.nodes.push(this.node(fileKey, doc.relativePath, 'file'));
     if (baseImageKey) {

@@ -3,7 +3,7 @@ import { TrustNodeRepository } from '../persistence/repositories/TrustNodeReposi
 import { TrustNode } from '../models/TrustNode';
 import { TrustState } from '../core/Types';
 
-/** Icône associée à chaque état de confiance. */
+/** Icon associated with each trust state. */
 const STATE_ICON: Record<TrustState, string> = {
   [TrustState.Unreviewed]: 'circle-outline',
   [TrustState.InProgress]: 'sync',
@@ -13,9 +13,9 @@ const STATE_ICON: Record<TrustState, string> = {
 };
 
 /**
- * Vue liste des nœuds du graphe de confiance, préfixée par un en-tête de
- * synthèse (répartition par état). La visualisation interactive en WebView
- * fait l'objet de la Phase 4 ; cette vue arborescente en est le repli.
+ * List view of the trust-graph nodes, prefixed by a summary header
+ * (distribution by state). The interactive WebView visualization is the
+ * subject of Phase 4; this tree view is its fallback.
  */
 export class TrustGraphTreeProvider implements vscode.TreeDataProvider<TrustNode | 'summary'> {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
@@ -31,7 +31,7 @@ export class TrustGraphTreeProvider implements vscode.TreeDataProvider<TrustNode
     if (element === 'summary') {
       const counts = this.repo.countByState();
       const parts = Object.entries(counts).map(([s, n]) => `${s}:${n}`);
-      const item = new vscode.TreeItem(parts.join('  ') || 'Aucun nœud');
+      const item = new vscode.TreeItem(parts.join('  ') || 'No node');
       item.iconPath = new vscode.ThemeIcon('graph');
       return item;
     }
@@ -39,7 +39,7 @@ export class TrustGraphTreeProvider implements vscode.TreeDataProvider<TrustNode
     item.description = `${element.kind} · ${element.state}`;
     item.iconPath = new vscode.ThemeIcon(STATE_ICON[element.state] ?? 'circle-outline');
     item.contextValue = 'trustNode';
-    item.tooltip = `clé : ${element.key}`;
+    item.tooltip = `key: ${element.key}`;
     return item;
   }
 

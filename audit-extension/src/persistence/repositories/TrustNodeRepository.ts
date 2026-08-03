@@ -13,9 +13,9 @@ interface Row {
 }
 
 /**
- * Persistance des nœuds du graphe de confiance. L'insertion se fait par
- * `upsert` sur la clé stable : ré-analyser un fichier met à jour le label
- * sans écraser l'état de revue déjà saisi par l'auditeur.
+ * Persistence of trust-graph nodes. Insertion is an `upsert` on the stable
+ * key: re-analyzing a file updates the label without clobbering the review
+ * state already set by the auditor.
  */
 export class TrustNodeRepository {
   constructor(private readonly db: AuditDatabase) {}
@@ -32,7 +32,7 @@ export class TrustNodeRepository {
     };
   }
 
-  /** Insère ou met à jour le nœud identifié par `key`, en préservant l'état. */
+  /** Inserts or updates the node identified by `key`, preserving its state. */
   upsert(input: NewTrustNode): TrustNode {
     const now = new Date().toISOString();
     this.db.handle
@@ -71,7 +71,7 @@ export class TrustNodeRepository {
     return (this.db.handle.prepare('SELECT * FROM trust_nodes ORDER BY label').all() as Row[]).map(TrustNodeRepository.map);
   }
 
-  /** Compte les nœuds par état, pour le tableau de bord de progression. */
+  /** Counts nodes per state, for the progress dashboard. */
   countByState(): Record<string, number> {
     const rows = this.db.handle.prepare('SELECT state, COUNT(*) AS n FROM trust_nodes GROUP BY state').all() as {
       state: string;

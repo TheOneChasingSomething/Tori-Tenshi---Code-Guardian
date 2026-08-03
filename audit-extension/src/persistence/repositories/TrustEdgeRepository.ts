@@ -9,7 +9,7 @@ interface Row {
   label: string | null;
 }
 
-/** Persistance des arêtes du graphe de confiance. */
+/** Persistence of trust-graph edges. */
 export class TrustEdgeRepository {
   constructor(private readonly db: AuditDatabase) {}
 
@@ -17,7 +17,7 @@ export class TrustEdgeRepository {
     return { id: r.id, fromId: r.from_id, toId: r.to_id, label: r.label ?? undefined };
   }
 
-  /** Ajoute une arête si elle n'existe pas déjà (contrainte UNIQUE). */
+  /** Adds an edge if it does not already exist (UNIQUE constraint). */
   upsert(fromId: Id, toId: Id, label?: string): void {
     this.db.handle
       .prepare(

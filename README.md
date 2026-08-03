@@ -1,86 +1,109 @@
 # Audit Extension
 
-Extension VS Code de **revue de code assistée et d'audit de sécurité**, à
-architecture orientée plugins. Chaque technologie (Ansible, Docker, Packer,
-Python, JavaScript, C, C++, HTML…) est analysée par un plugin indépendant :
-le cœur ne contient jamais de logique d'analyse spécifique à un langage.
+A VS Code extension for **assisted code review and security auditing**, built on
+a plugin-oriented architecture. Each technology (Ansible, Docker, Packer, Python,
+JavaScript, C, C++, HTML…) is analyzed by an independent plugin: the core never
+contains language-specific analysis logic.
 
-> État : **Phase 1** du cahier des charges — architecture, système de plugins,
-> persistance SQLite, TreeViews et commandes. Les phases 2 à 7 (Obsidian,
-> analyseurs Tree-sitter, graphe interactif, analyse dynamique, connecteurs IA,
-> rapports) restent à implémenter.
+> Status: **Phases 1–2** of the specification.
+> Phase 1 — architecture, plugin system, SQLite persistence, tree views, commands.
+> Phase 2 — annotation engine (decorations, hover, CodeLens, revision history),
+> advanced bookmarks, knowledge base, and native Obsidian integration.
+> Phases 3–7 (Tree-sitter analyzers, interactive graph, dynamic analysis, AI
+> connectors, reports) remain to be implemented.
 
 ## Architecture
 
 ```
 src/
-├── extension.ts          Point d'entrée : activation + injection de dépendances
+├── extension.ts          Entry point: activation + dependency injection
 ├── core/                 Types, Logger, EventBus, Result, Configuration
-├── models/               Entités du domaine (Annotation, TrustNode/Edge, KnowledgeNote)
-├── persistence/          Base SQLite, migrateur, dépôts (repositories)
+├── models/               Domain entities (Annotation, TrustNode/Edge, KnowledgeNote, Bookmark)
+├── persistence/          SQLite database, migrator, repositories
 │   ├── Database.ts
-│   ├── migrations/
+│   ├── migrations/       v1 initial schema · v2 bookmarks + note provenance
 │   └── repositories/
-├── plugins/              Contrat AuditPlugin + PluginManager
-│   └── builtin/          Docker (fonctionnel), Ansible, Packer (ébauches)
-├── ui/                   Fournisseurs de TreeView (annotations, confiance, savoir)
-└── commands/             Enregistrement des commandes VS Code
+├── plugins/              AuditPlugin contract + PluginManager
+│   └── builtin/          Docker (functional), Ansible, Packer (stubs)
+├── obsidian/             Native Obsidian integration (note types + service)
+├── services/             AnnotationService (decorations, re-anchoring, providers)
+├── ui/                   Tree views + hover/CodeLens/decoration providers
+└── commands/             VS Code command registration
 ```
 
-Le découpage suit une logique d'architecture hexagonale : `core/` et `models/`
-n'ont **aucune** dépendance vers l'API VS Code et sont testables en isolation.
-La communication entre couches passe par un `EventBus` typé, ce qui évite les
-couplages directs et facilite l'ajout de plugins [1].
+The layering follows a hexagonal style: `core/` and `models/` have **no**
+dependency on the VS Code API and are testable in isolation. Cross-layer
+communication goes through a typed `EventBus`, which avoids direct coupling and
+eases the addition of plugins [1].
 
-### Confidentialité (trois modes IA)
+## Phase 2 features
 
-Conformément au cahier des charges, le paramètre `audit.llm.mode` propose :
+**Annotation engine.** Annotations are shown in the editor via decorations
+(overview-ruler mark + subtle highlight), a **hover** popup, and a **CodeLens**
+offering edit/history/delete. Every edit is versioned (`annotation_revisions`).
+A lightweight **re-anchoring** shifts anchors by the line delta when text is
+inserted or removed above them.
 
-| Mode           | Comportement                                                        |
+**Advanced bookmarks.** Category-grouped navigation markers, distinct from
+annotations, with `Ctrl+Alt+K` to toggle, a dedicated tree view, and quick
+"go to bookmark".
+
+**Native Obsidian integration.** Knowledge notes are written into the configured
+vault following the *5_Knowledges* conventions: a timestamped id, per-type
+subfolder and filename decoration (`{{ … }}`, `== … ==`, `"" … ""`, `@@ … @@`,
+`** … **`, `;; … ;;`), and YAML frontmatter (`rédaction`, per-type tags,
+`Knowledge-index`). All disk access uses `vscode.workspace.fs` [2].
+
+### Privacy (three AI modes)
+
+| Mode           | Behavior                                                            |
 | -------------- | ------------------------------------------------------------------- |
-| `local`        | Défaut. Aucun code ne quitte la machine (LSP/Tree-sitter/linters).  |
-| `llm-local`    | Modèle local (Ollama, LM Studio, vLLM). Aucune transmission Internet.|
-| `remote-agent` | Agent distant (Windsurf). **Désactivé** tant que `audit.remoteAgent.enabled` n'est pas explicitement activé. |
+| `local`        | Default. No code leaves the machine (LSP/Tree-sitter/linters).      |
+| `llm-local`    | Local model (Ollama, LM Studio, vLLM). No Internet transmission.    |
+| `remote-agent` | Remote agent (Windsurf). **Disabled** until `audit.remoteAgent.enabled` is explicitly set. |
 
-Les motifs de `audit.exclusionGlobs` (par défaut `*.pem`, `secrets.yml`,
-`inventory`, `.env`) ne sont jamais transmis à un service externe
-(`Configuration.isTransmittable`).
+`audit.exclusionGlobs` (default `*.pem`, `secrets.yml`, `inventory`, `.env`) are
+never transmitted externally (`Configuration.isTransmittable`).
 
-## Installation et exécution
+## Install and run
 
-Prérequis : Node.js ≥ 18, VS Code ≥ 1.90.
+Requirements: Node.js ≥ 18, VS Code ≥ 1.90.
 
 ```bash
-npm install          # installe better-sqlite3 et les types
+npm install          # installs better-sqlite3 and the types
 npm run compile      # tsc -> out/
-# Puis, dans VS Code : F5 (« Run Extension ») pour lancer une fenêtre de test.
+# Then, in VS Code: F5 ("Run Extension") to launch a test window.
 ```
 
-> Remarque : `better-sqlite3` est un module natif recompilé à l'installation.
-> Ce dépôt a été **vérifié en types hors ligne** (`.typecheck/`, modules
-> externes stubés) mais non compilé avec ses dépendances réelles.
+> Note: `better-sqlite3` is a native module recompiled on install. This repository
+> was **type-checked offline** (`.typecheck/`, external modules stubbed) but not
+> compiled with its real dependencies.
 
-## Commandes
+## Commands
 
-| Commande                  | Effet                                              |
-| ------------------------- | -------------------------------------------------- |
-| `audit.scanWorkspace`     | Analyse l'espace de travail via les plugins.       |
-| `audit.addAnnotation`     | Annote la sélection courante (versionnée).         |
-| `audit.setNodeState`      | Change l'état d'un nœud de confiance.              |
-| `audit.exportObsidian`    | `Ctrl+Shift+O` — crée une note (coffre : Phase 2). |
-| `audit.refreshViews`      | Rafraîchit les vues.                               |
+| Command                       | Effect                                              |
+| ----------------------------- | --------------------------------------------------- |
+| `audit.scanWorkspace`         | Analyze the workspace through the plugins.          |
+| `audit.addAnnotation`         | Annotate the current selection (versioned).         |
+| `audit.editAnnotation`        | Edit an annotation (bumps its revision).            |
+| `audit.showAnnotationHistory` | Show an annotation's revision history.              |
+| `audit.toggleBookmark`        | `Ctrl+Alt+K` — toggle a bookmark at the cursor.     |
+| `audit.gotoBookmark`          | Jump to a bookmark.                                 |
+| `audit.setNodeState`          | Change a trust-node's state.                        |
+| `audit.exportObsidian`        | `Ctrl+Shift+O` — create a note (and write to vault).|
+| `audit.syncObsidian`          | Write all pending notes into the vault.             |
 
-## Feuille de route
+## Roadmap
 
-1. ✅ Architecture, plugins, SQLite, TreeViews, persistance.
-2. ⬜ Annotations avancées, base de connaissances, intégration Obsidian native.
-3. ⬜ Analyseurs Ansible/Docker/Packer/Python/JS/C/C++/HTML (LSP + Tree-sitter).
-4. ⬜ Moteur de graphes + visualisation interactive (WebView).
-5. ⬜ Analyse dynamique (Ansible, Docker, QEMU) + linters.
-6. ⬜ Connecteurs IA (local par défaut, Windsurf sur autorisation).
-7. ⬜ Rapports d'audit Markdown/HTML/PDF + tableau de bord.
+1. ✅ Architecture, plugins, SQLite, tree views, persistence.
+2. ✅ Annotation engine, advanced bookmarks, knowledge base, Obsidian integration.
+3. ⬜ Ansible/Docker/Packer/Python/JS/C/C++/HTML analyzers (LSP + Tree-sitter).
+4. ⬜ Graph engine + interactive visualization (WebView).
+5. ⬜ Dynamic analysis (Ansible, Docker, QEMU) + linters.
+6. ⬜ AI connectors (local by default, Windsurf on authorization).
+7. ⬜ Audit reports in Markdown/HTML/PDF + progress dashboard.
 
-## Références
+## References
 
 1. Martin, R. C. *Clean Architecture: A Craftsman's Guide to Software Structure and Design*. Prentice Hall, 2017.
 2. Visual Studio Code. *Extension API*. https://code.visualstudio.com/api
@@ -88,15 +111,14 @@ npm run compile      # tsc -> out/
 4. SQLite. *The SQLite Database File Format* & *Documentation*. https://sqlite.org/docs.html
 5. Microsoft. *Language Server Protocol Specification*. https://microsoft.github.io/language-server-protocol/
 
-## Annexe — Acronymes
+## Appendix — Acronyms
 
-- **API** — *Application Programming Interface* : interface de programmation.
-- **HCL** — *HashiCorp Configuration Language* : langage de configuration de Packer/Terraform.
-- **HTML** — *HyperText Markup Language* : langage de balisage des pages Web.
-- **LLM** — *Large Language Model* : modèle de langage de grande taille.
-- **LSP** — *Language Server Protocol* : protocole d'analyse de code côté éditeur.
-- **PDF** — *Portable Document Format* : format de document à mise en page préservée.
-- **QEMU** — *Quick Emulator* : émulateur/hyperviseur de machines virtuelles.
-- **SQL** — *Structured Query Language* : langage de manipulation de bases relationnelles.
-- **WAL** — *Write-Ahead Logging* : mode de journalisation de SQLite.
-- **YAML** — *YAML Ain't Markup Language* : format de sérialisation lisible.
+- **API** — *Application Programming Interface*.
+- **HCL** — *HashiCorp Configuration Language* (Packer/Terraform).
+- **LLM** — *Large Language Model*.
+- **LSP** — *Language Server Protocol*.
+- **PDF** — *Portable Document Format*.
+- **QEMU** — *Quick Emulator*.
+- **SQL** — *Structured Query Language*.
+- **WAL** — *Write-Ahead Logging* (SQLite journaling mode).
+- **YAML** — *YAML Ain't Markup Language*.

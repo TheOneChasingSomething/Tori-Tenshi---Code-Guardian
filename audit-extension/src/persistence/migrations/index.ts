@@ -1,7 +1,7 @@
 /**
- * Migrations ordonnées. Chaque migration est idempotente au niveau du
- * runner (elle n'est exécutée que si sa version n'a pas déjà été appliquée),
- * mais son SQL n'a pas besoin de l'être.
+ * Ordered migrations. Each migration is idempotent at the runner level (it is
+ * executed only if its version has not already been applied), but its SQL does
+ * not need to be.
  */
 export interface Migration {
   version: number;
@@ -28,7 +28,7 @@ export const MIGRATIONS: Migration[] = [
         updated_at TEXT    NOT NULL
       );
 
-      -- Historique des révisions d'annotations (compréhension versionnée).
+      -- History of annotation revisions (versioned understanding).
       CREATE TABLE annotation_revisions (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
         annotation_id INTEGER NOT NULL REFERENCES annotations(id) ON DELETE CASCADE,
@@ -71,3 +71,28 @@ export const MIGRATIONS: Migration[] = [
     `,
   },
 ];
+
+MIGRATIONS.push({
+  version: 2,
+  name: 'bookmarks-and-note-provenance',
+  up: `
+    CREATE TABLE bookmarks (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      file       TEXT    NOT NULL,
+      start_line INTEGER NOT NULL,
+      start_char INTEGER NOT NULL,
+      end_line   INTEGER NOT NULL,
+      end_char   INTEGER NOT NULL,
+      label      TEXT    NOT NULL,
+      category   TEXT    NOT NULL DEFAULT 'general',
+      created_at TEXT    NOT NULL
+    );
+    CREATE INDEX idx_bookmarks_file ON bookmarks(file);
+    CREATE INDEX idx_bookmarks_category ON bookmarks(category);
+
+    -- Provenance and Obsidian metadata for knowledge notes.
+    ALTER TABLE knowledge_notes ADD COLUMN obsidian_type TEXT;
+    ALTER TABLE knowledge_notes ADD COLUMN obsidian_id TEXT;
+    ALTER TABLE knowledge_notes ADD COLUMN source_annotation_id INTEGER;
+  `,
+});

@@ -1,16 +1,16 @@
 import { Id, SourceRange } from '../core/Types';
 
 /**
- * Annotation attachée à une portion de code. Chaque annotation est
- * versionnée (cf. « Historique de la compréhension » du cahier des charges) :
- * une modification crée une nouvelle révision plutôt qu'un écrasement.
+ * Annotation attached to a portion of code. Every annotation is versioned
+ * (cf. "Understanding history" in the specification): editing creates a new
+ * revision rather than overwriting the previous one.
  */
 export interface Annotation {
   id: Id;
   range: SourceRange;
   body: string;
   author: string;
-  revision: number;      // incrémenté à chaque édition
+  revision: number;      // incremented on every edit
   createdAt: string;     // ISO-8601
   updatedAt: string;     // ISO-8601
 }

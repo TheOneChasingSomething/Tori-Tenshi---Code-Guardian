@@ -2,9 +2,9 @@ import { AuditPlugin, AnalyzableDocument, PluginContext } from '../AuditPlugin';
 import { AnalysisResult, emptyAnalysis } from '../../core/Types';
 
 /**
- * Plugin Packer (HCL). Ébauche : enregistre le contrat et le langage.
- * L'analyse HCL réelle (blocs `source`, `build`, provisioners) sera
- * implémentée en Phase 3 via une grammaire Tree-sitter HCL.
+ * Packer plugin (HCL). Stub: registers the contract and the language. Real HCL
+ * analysis (`source`, `build`, provisioner blocks) will be implemented in
+ * Phase 3 via a Tree-sitter HCL grammar.
  */
 export class PackerPlugin implements AuditPlugin {
   readonly id = 'packer';
@@ -12,7 +12,7 @@ export class PackerPlugin implements AuditPlugin {
   readonly languageIds = ['hcl', 'packer'];
 
   analyze(_doc: AnalyzableDocument, ctx: PluginContext): AnalysisResult {
-    ctx.logger.info('PackerPlugin : analyse HCL non encore implémentée (Phase 3).');
+    ctx.logger.info('PackerPlugin: HCL analysis not yet implemented (Phase 3).');
     return emptyAnalysis();
   }
 }

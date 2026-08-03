@@ -1,5 +1,5 @@
 import { AuditDatabase } from '../Database';
-import { KnowledgeNote, NewKnowledgeNote } from '../../models/KnowledgeNote';
+import { KnowledgeNote, NewKnowledgeNote, ObsidianNoteType } from '../../models/KnowledgeNote';
 import { Id } from '../../core/Types';
 
 interface Row {
@@ -10,10 +10,13 @@ interface Row {
   start_line: number | null;
   end_line: number | null;
   obsidian_path: string | null;
+  obsidian_type: string | null;
+  obsidian_id: string | null;
+  source_annotation_id: number | null;
   created_at: string;
 }
 
-/** Persistance des notes de la base de connaissances. */
+/** Persistence of knowledge-base notes and their Obsidian metadata. */
 export class KnowledgeRepository {
   constructor(private readonly db: AuditDatabase) {}
 
@@ -27,6 +30,9 @@ export class KnowledgeRepository {
           ? { file: r.file, startLine: r.start_line, startChar: 0, endLine: r.end_line, endChar: 0 }
           : undefined,
       obsidianPath: r.obsidian_path ?? undefined,
+      obsidianType: (r.obsidian_type as ObsidianNoteType | null) ?? undefined,
+      obsidianId: r.obsidian_id ?? undefined,
+      sourceAnnotationId: r.source_annotation_id ?? undefined,
       createdAt: r.created_at,
     };
   }
@@ -35,8 +41,9 @@ export class KnowledgeRepository {
     const now = new Date().toISOString();
     const info = this.db.handle
       .prepare(
-        `INSERT INTO knowledge_notes (title, content, file, start_line, end_line, obsidian_path, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO knowledge_notes
+           (title, content, file, start_line, end_line, obsidian_path, obsidian_type, obsidian_id, source_annotation_id, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.title,
@@ -45,13 +52,29 @@ export class KnowledgeRepository {
         input.sourceRange?.startLine ?? null,
         input.sourceRange?.endLine ?? null,
         input.obsidianPath ?? null,
+        input.obsidianType ?? null,
+        input.obsidianId ?? null,
+        input.sourceAnnotationId ?? null,
         now
       );
     return { ...input, id: Number(info.lastInsertRowid), createdAt: now };
   }
 
+  findById(id: Id): KnowledgeNote | undefined {
+    const row = this.db.handle.prepare('SELECT * FROM knowledge_notes WHERE id = ?').get(id) as Row | undefined;
+    return row ? KnowledgeRepository.map(row) : undefined;
+  }
+
+  /** Records the vault location once the note has been written to disk. */
   setObsidianPath(id: Id, obsidianPath: string): void {
     this.db.handle.prepare('UPDATE knowledge_notes SET obsidian_path = ? WHERE id = ?').run(obsidianPath, id);
+  }
+
+  /** Notes not yet materialized in the vault (used by the sync command). */
+  pendingExport(): KnowledgeNote[] {
+    return (this.db.handle.prepare('SELECT * FROM knowledge_notes WHERE obsidian_path IS NULL ORDER BY created_at').all() as Row[]).map(
+      KnowledgeRepository.map
+    );
   }
 
   all(): KnowledgeNote[] {

@@ -1,84 +1,61 @@
-import { AuditPlugin, AnalyzableDocument, PluginContext } from '../AuditPlugin';
-import { AnalysisResult, DiscoveredNode, DiscoveredEdge, Finding, Severity, emptyAnalysis } from '../../core/Types';
+import { AnalyzableDocument } from '../AuditPlugin';
+import { RuleBasedPlugin, RegexRule } from '../../analysis/RuleBasedPlugin';
+import { DiscoveredNode, DiscoveredEdge, Finding, Severity } from '../../core/Types';
 
 /**
- * Built-in Dockerfile analyzer. The heuristics below are deliberately simple
- * (line-by-line scanning) and act as a reference implementation of the
- * AuditPlugin contract; Phase 3 will replace them with a Tree-sitter walk [3].
+ * Dockerfile analyzer. Simple checks stay as regex/file rules; Phase 3 keeps the
+ * base-image graph discovery so Docker seeds the trust graph.
  *
- * Rules covered:
- *  - DKR001: unpinned base image (`latest` or missing tag).
- *  - DKR002: container running as root (no USER instruction).
- *  - DKR003: use of `ADD` with a remote URL (prefer COPY).
+ * Rules: DKR001 unpinned base image · DKR002 runs as root · DKR003 ADD remote URL.
  */
-export class DockerPlugin implements AuditPlugin {
+export class DockerPlugin extends RuleBasedPlugin {
   readonly id = 'docker';
   readonly displayName = 'Docker';
   readonly languageIds = ['dockerfile'];
 
-  analyze(doc: AnalyzableDocument, _ctx: PluginContext): AnalysisResult {
-    const result = emptyAnalysis();
+  protected regexRules: RegexRule[] = [
+    { id: 'DKR003', severity: Severity.Low, pattern: /^\s*ADD\s+https?:\/\//i, message: 'ADD with a remote URL: prefer COPY or a verified download.' },
+  ];
+
+  protected fileFindings(doc: AnalyzableDocument): Finding[] {
+    const findings: Finding[] = [];
     const lines = doc.text.split(/\r?\n/);
+    let hasFrom = false;
     let hasUser = false;
-    let baseImageKey: string | undefined;
-
     lines.forEach((line, index) => {
-      const trimmed = line.trim();
-      const upper = trimmed.toUpperCase();
-
-      if (upper.startsWith('FROM ')) {
-        const image = trimmed.slice(5).trim().split(/\s+/)[0];
-        baseImageKey = `docker:image:${image}`;
-        result.nodes.push(this.node(baseImageKey, image, 'container'));
-
+      const t = line.trim();
+      const u = t.toUpperCase();
+      if (u.startsWith('FROM ')) {
+        hasFrom = true;
+        const image = t.slice(5).trim().split(/\s+/)[0];
         if (!image.includes('@sha256:') && (!image.includes(':') || image.endsWith(':latest'))) {
-          result.findings.push(
-            this.finding('DKR001', `Unpinned base image: "${image}". Pin a tag or a digest.`, Severity.Medium, doc.relativePath, index)
-          );
+          findings.push(this.finding('DKR001', `Unpinned base image: "${image}". Pin a tag or a digest.`, Severity.Medium, doc.relativePath, index));
         }
       }
-
-      if (upper.startsWith('USER ')) {
+      if (u.startsWith('USER ')) {
         hasUser = true;
       }
-
-      if (/^ADD\s+https?:\/\//i.test(trimmed)) {
-        result.findings.push(
-          this.finding('DKR003', 'ADD with a remote URL: prefer COPY or a verified download.', Severity.Low, doc.relativePath, index)
-        );
-      }
     });
-
-    if (!hasUser && lines.some((l) => l.trim().toUpperCase().startsWith('FROM '))) {
-      result.findings.push(
-        this.finding('DKR002', 'No USER instruction: the container will run as root.', Severity.High, doc.relativePath, 0)
-      );
+    if (hasFrom && !hasUser) {
+      findings.push(this.finding('DKR002', 'No USER instruction: the container will run as root.', Severity.High, doc.relativePath, 0));
     }
+    return findings;
+  }
 
-    // A "file" node linked to the base image, to seed the trust graph.
+  protected discover(doc: AnalyzableDocument): { nodes: DiscoveredNode[]; edges: DiscoveredEdge[] } {
+    const nodes: DiscoveredNode[] = [];
+    const edges: DiscoveredEdge[] = [];
     const fileKey = `file:${doc.relativePath}`;
-    result.nodes.push(this.node(fileKey, doc.relativePath, 'file'));
-    if (baseImageKey) {
-      result.edges.push(this.edge(fileKey, baseImageKey, 'FROM'));
+    nodes.push({ key: fileKey, label: doc.relativePath, kind: 'file' });
+    for (const line of doc.text.split(/\r?\n/)) {
+      const m = line.trim().match(/^FROM\s+(\S+)/i);
+      if (m) {
+        const image = m[1];
+        const imageKey = `docker:image:${image}`;
+        nodes.push({ key: imageKey, label: image, kind: 'container' });
+        edges.push({ fromKey: fileKey, toKey: imageKey, label: 'FROM' });
+      }
     }
-    return result;
-  }
-
-  private node(key: string, label: string, kind: DiscoveredNode['kind']): DiscoveredNode {
-    return { key, label, kind };
-  }
-
-  private edge(fromKey: string, toKey: string, label: string): DiscoveredEdge {
-    return { fromKey, toKey, label };
-  }
-
-  private finding(ruleId: string, message: string, severity: Severity, file: string, line: number): Finding {
-    return {
-      pluginId: this.id,
-      ruleId,
-      message,
-      severity,
-      range: { file, startLine: line, startChar: 0, endLine: line, endChar: 200 },
-    };
+    return { nodes, edges };
   }
 }

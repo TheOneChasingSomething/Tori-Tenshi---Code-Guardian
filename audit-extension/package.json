@@ -2,12 +2,19 @@
   "name": "audit-extension",
   "displayName": "Audit Extension",
   "description": "Assisted code review and security auditing with a plugin-oriented architecture (Ansible, Docker, Packer, Python, JS, C/C++, HTML).",
-  "version": "0.2.0",
+  "version": "0.7.0",
   "publisher": "audit-lab",
   "license": "MIT",
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["Linters", "Other"],
-  "activationEvents": ["onStartupFinished"],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
@@ -15,7 +22,11 @@
       "properties": {
         "audit.llm.mode": {
           "type": "string",
-          "enum": ["local", "llm-local", "remote-agent"],
+          "enum": [
+            "local",
+            "llm-local",
+            "remote-agent"
+          ],
           "enumDescriptions": [
             "No code leaves the machine. Analysis via LSP/Tree-sitter/linters only.",
             "Connects to a local model (Ollama, LM Studio, vLLM). No data sent to the Internet.",
@@ -36,8 +47,16 @@
         },
         "audit.exclusionGlobs": {
           "type": "array",
-          "items": { "type": "string" },
-          "default": ["**/*.pem", "**/secrets.yml", "**/secrets.yaml", "**/inventory", "**/.env"],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.pem",
+            "**/secrets.yml",
+            "**/secrets.yaml",
+            "**/inventory",
+            "**/.env"
+          ],
           "description": "File patterns never transmitted to an external service."
         },
         "audit.obsidian.vaultPath": {
@@ -52,7 +71,14 @@
         },
         "audit.obsidian.defaultNoteType": {
           "type": "string",
-          "enum": ["index", "flashcard", "cheatsheet", "gist", "slides", "groom"],
+          "enum": [
+            "index",
+            "flashcard",
+            "cheatsheet",
+            "gist",
+            "slides",
+            "groom"
+          ],
           "default": "gist",
           "description": "Default note type when exporting an audit note."
         },
@@ -60,51 +86,248 @@
           "type": "string",
           "default": "",
           "description": "Index note referenced in each note's Knowledge-index field."
+        },
+        "audit.analysis.grammarsPath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the Tree-sitter .wasm grammars. Empty uses the bundled grammars/ folder."
+        },
+        "audit.analysis.analyzeOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-analyze a document each time it is saved."
+        },
+        "audit.dynamic.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run external linters and the QEMU inspector as child processes (opt-in)."
+        },
+        "audit.dynamic.runOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also run dynamic analysis on save (only when dynamic analysis is enabled)."
+        },
+        "audit.dynamic.timeoutMs": {
+          "type": "number",
+          "default": 20000,
+          "description": "Per-process timeout for external tools, in milliseconds."
+        },
+        "audit.llm.model": {
+          "type": "string",
+          "default": "llama3.1",
+          "description": "Model name passed to the local model or the remote agent."
+        },
+        "audit.remoteAgent.endpoint": {
+          "type": "string",
+          "default": "",
+          "description": "Base URL of the remote agent (Windsurf), OpenAI-compatible. Empty disables it."
         }
       }
     },
     "viewsContainers": {
-      "activitybar": [{ "id": "audit-explorer", "title": "Audit", "icon": "$(shield)" }]
+      "activitybar": [
+        {
+          "id": "audit-explorer",
+          "title": "Audit",
+          "icon": "$(shield)"
+        }
+      ]
     },
     "views": {
       "audit-explorer": [
-        { "id": "audit.annotations", "name": "Annotations" },
-        { "id": "audit.bookmarks", "name": "Bookmarks" },
-        { "id": "audit.trustGraph", "name": "Trust graph" },
-        { "id": "audit.knowledge", "name": "Knowledge base" }
+        {
+          "id": "audit.annotations",
+          "name": "Annotations"
+        },
+        {
+          "id": "audit.bookmarks",
+          "name": "Bookmarks"
+        },
+        {
+          "id": "audit.trustGraph",
+          "name": "Trust graph"
+        },
+        {
+          "id": "audit.knowledge",
+          "name": "Knowledge base"
+        }
       ]
     },
     "commands": [
-      { "command": "audit.scanWorkspace", "title": "Audit: Scan workspace", "icon": "$(search)" },
-      { "command": "audit.addAnnotation", "title": "Audit: Add annotation" },
-      { "command": "audit.editAnnotation", "title": "Audit: Edit annotation" },
-      { "command": "audit.deleteAnnotation", "title": "Audit: Delete annotation" },
-      { "command": "audit.showAnnotationHistory", "title": "Audit: Show annotation history" },
-      { "command": "audit.toggleBookmark", "title": "Audit: Toggle bookmark" },
-      { "command": "audit.gotoBookmark", "title": "Audit: Go to bookmark" },
-      { "command": "audit.clearBookmarks", "title": "Audit: Clear bookmarks", "icon": "$(clear-all)" },
-      { "command": "audit.setNodeState", "title": "Audit: Set trust-node state" },
-      { "command": "audit.exportObsidian", "title": "Audit: Create Obsidian note" },
-      { "command": "audit.syncObsidian", "title": "Audit: Sync notes to Obsidian", "icon": "$(sync)" },
-      { "command": "audit.openObsidianNote", "title": "Audit: Open Obsidian note" },
-      { "command": "audit.refreshViews", "title": "Audit: Refresh views", "icon": "$(refresh)" }
+      {
+        "command": "audit.scanWorkspace",
+        "title": "Audit: Scan workspace",
+        "icon": "$(search)"
+      },
+      {
+        "command": "audit.addAnnotation",
+        "title": "Audit: Add annotation"
+      },
+      {
+        "command": "audit.editAnnotation",
+        "title": "Audit: Edit annotation"
+      },
+      {
+        "command": "audit.deleteAnnotation",
+        "title": "Audit: Delete annotation"
+      },
+      {
+        "command": "audit.showAnnotationHistory",
+        "title": "Audit: Show annotation history"
+      },
+      {
+        "command": "audit.toggleBookmark",
+        "title": "Audit: Toggle bookmark"
+      },
+      {
+        "command": "audit.gotoBookmark",
+        "title": "Audit: Go to bookmark"
+      },
+      {
+        "command": "audit.clearBookmarks",
+        "title": "Audit: Clear bookmarks",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "audit.setNodeState",
+        "title": "Audit: Set trust-node state"
+      },
+      {
+        "command": "audit.exportObsidian",
+        "title": "Audit: Create Obsidian note"
+      },
+      {
+        "command": "audit.syncObsidian",
+        "title": "Audit: Sync notes to Obsidian",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "audit.openObsidianNote",
+        "title": "Audit: Open Obsidian note"
+      },
+      {
+        "command": "audit.refreshViews",
+        "title": "Audit: Refresh views",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "audit.showGraph",
+        "title": "Audit: Open trust graph",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "audit.runLinters",
+        "title": "Audit: Run linters on file"
+      },
+      {
+        "command": "audit.checkTools",
+        "title": "Audit: Check external tools"
+      },
+      {
+        "command": "audit.inspectImage",
+        "title": "Audit: Inspect disk image (QEMU)"
+      },
+      {
+        "command": "audit.explainSelection",
+        "title": "Audit: Explain selection (AI)"
+      },
+      {
+        "command": "audit.reviewFile",
+        "title": "Audit: Review file (AI)"
+      },
+      {
+        "command": "audit.aiStatus",
+        "title": "Audit: AI status"
+      },
+      {
+        "command": "audit.authorizeRemoteAgent",
+        "title": "Audit: Authorize remote agent (Windsurf)"
+      },
+      {
+        "command": "audit.setRemoteAgentToken",
+        "title": "Audit: Set remote agent token"
+      },
+      {
+        "command": "audit.showDashboard",
+        "title": "Audit: Open dashboard",
+        "icon": "$(dashboard)"
+      },
+      {
+        "command": "audit.generateReport",
+        "title": "Audit: Generate report"
+      }
     ],
     "menus": {
       "view/title": [
-        { "command": "audit.scanWorkspace", "when": "view == audit.annotations", "group": "navigation" },
-        { "command": "audit.refreshViews", "when": "view == audit.annotations", "group": "navigation" },
-        { "command": "audit.clearBookmarks", "when": "view == audit.bookmarks", "group": "navigation" },
-        { "command": "audit.syncObsidian", "when": "view == audit.knowledge", "group": "navigation" }
+        {
+          "command": "audit.scanWorkspace",
+          "when": "view == audit.annotations",
+          "group": "navigation"
+        },
+        {
+          "command": "audit.refreshViews",
+          "when": "view == audit.annotations",
+          "group": "navigation"
+        },
+        {
+          "command": "audit.clearBookmarks",
+          "when": "view == audit.bookmarks",
+          "group": "navigation"
+        },
+        {
+          "command": "audit.syncObsidian",
+          "when": "view == audit.knowledge",
+          "group": "navigation"
+        },
+        {
+          "command": "audit.showGraph",
+          "when": "view == audit.trustGraph",
+          "group": "navigation"
+        },
+        {
+          "command": "audit.showDashboard",
+          "when": "view == audit.annotations",
+          "group": "navigation"
+        }
       ],
       "editor/context": [
-        { "command": "audit.addAnnotation", "group": "audit@1" },
-        { "command": "audit.toggleBookmark", "group": "audit@2" },
-        { "command": "audit.exportObsidian", "group": "audit@3" }
+        {
+          "command": "audit.addAnnotation",
+          "group": "audit@1"
+        },
+        {
+          "command": "audit.toggleBookmark",
+          "group": "audit@2"
+        },
+        {
+          "command": "audit.exportObsidian",
+          "group": "audit@3"
+        },
+        {
+          "command": "audit.runLinters",
+          "group": "audit@4"
+        },
+        {
+          "command": "audit.explainSelection",
+          "group": "audit@5"
+        },
+        {
+          "command": "audit.reviewFile",
+          "group": "audit@6"
+        }
       ]
     },
     "keybindings": [
-      { "command": "audit.exportObsidian", "key": "ctrl+shift+o", "when": "editorTextFocus" },
-      { "command": "audit.toggleBookmark", "key": "ctrl+alt+k", "when": "editorTextFocus" }
+      {
+        "command": "audit.exportObsidian",
+        "key": "ctrl+shift+o",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "audit.toggleBookmark",
+        "key": "ctrl+alt+k",
+        "when": "editorTextFocus"
+      }
     ]
   },
   "scripts": {
@@ -114,7 +337,10 @@
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
-  "dependencies": { "better-sqlite3": "^11.0.0" },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "web-tree-sitter": "^0.22.0"
+  },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^20.0.0",

@@ -7,6 +7,7 @@ import { KnowledgeRepository } from '../persistence/repositories/KnowledgeReposi
 import { BookmarkRepository } from '../persistence/repositories/BookmarkRepository';
 import { PluginManager } from '../plugins/PluginManager';
 import { ObsidianService } from '../obsidian/ObsidianService';
+import { AnalysisRunner } from '../services/AnalysisRunner';
 import { NOTE_TYPES, timestampId } from '../obsidian/noteTypes';
 import { ObsidianNoteType } from '../models/KnowledgeNote';
 import { EventBus } from '../core/EventBus';
@@ -22,59 +23,24 @@ export interface CommandDeps {
   bookmarks: BookmarkRepository;
   plugins: PluginManager;
   obsidian: ObsidianService;
+  runner: AnalysisRunner;
   bus: EventBus;
   logger: Logger;
 }
 
-/** Path of a document relative to the workspace root. */
-function relPath(uri: vscode.Uri): string {
-  const folder = vscode.workspace.getWorkspaceFolder(uri);
-  return folder ? path.relative(folder.uri.fsPath, uri.fsPath) : uri.fsPath;
-}
-
 export function registerCommands(context: vscode.ExtensionContext, deps: CommandDeps): void {
-  const { annotations, nodes, edges, knowledge, bookmarks, plugins, obsidian, bus, logger } = deps;
+  const { annotations, nodes, knowledge, bookmarks, obsidian, runner, bus } = deps;
 
   context.subscriptions.push(
     vscode.commands.registerCommand('audit.refreshViews', () => bus.emit('views:refresh', undefined)),
 
-    // --- Workspace analysis (Phase 1) --------------------------------------
+    // --- Workspace analysis (Phase 1, now via AnalysisRunner) --------------
     vscode.commands.registerCommand('audit.scanWorkspace', async () => {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Audit: analysis in progress…' },
         async () => {
-          const uris = await vscode.workspace.findFiles('**/*', '**/node_modules/**', 2000);
-          let totalFindings = 0;
-          for (const uri of uris) {
-            let document: vscode.TextDocument;
-            try {
-              document = await vscode.workspace.openTextDocument(uri);
-            } catch {
-              continue;
-            }
-            const result = await plugins.analyze({
-              relativePath: relPath(uri),
-              languageId: document.languageId,
-              text: document.getText(),
-            });
-            totalFindings += result.findings.length;
-            const keyToId = new Map<string, number>();
-            for (const n of result.nodes) {
-              const saved = nodes.upsert({ key: n.key, label: n.label, kind: n.kind, state: TrustState.Unreviewed, file: n.range?.file });
-              keyToId.set(n.key, saved.id);
-            }
-            for (const e of result.edges) {
-              const from = keyToId.get(e.fromKey);
-              const to = keyToId.get(e.toKey);
-              if (from && to) {
-                edges.upsert(from, to, e.label);
-              }
-            }
-            bus.emit('analysis:completed', { file: relPath(uri), findingCount: result.findings.length });
-          }
-          bus.emit('views:refresh', undefined);
-          vscode.window.showInformationMessage(`Audit complete: ${totalFindings} finding(s) across ${uris.length} file(s).`);
-          logger.info(`Analysis complete: ${totalFindings} findings.`);
+          const { files, findings } = await runner.runWorkspace();
+          vscode.window.showInformationMessage(`Audit complete: ${findings} finding(s) across ${files} file(s).`);
         }
       );
     }),

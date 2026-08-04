@@ -5,12 +5,12 @@ a plugin-oriented architecture. Each technology (Ansible, Docker, Packer, Python
 JavaScript, C, C++, HTML…) is analyzed by an independent plugin: the core never
 contains language-specific analysis logic.
 
-> Status: **Phases 1–2** of the specification.
+> Status: **Phases 1–3** of the specification.
 > Phase 1 — architecture, plugin system, SQLite persistence, tree views, commands.
-> Phase 2 — annotation engine (decorations, hover, CodeLens, revision history),
-> advanced bookmarks, knowledge base, and native Obsidian integration.
-> Phases 3–7 (Tree-sitter analyzers, interactive graph, dynamic analysis, AI
-> connectors, reports) remain to be implemented.
+> Phase 2 — annotation engine, advanced bookmarks, knowledge base, Obsidian integration.
+> Phase 3 — analyzers for Docker, Ansible, Packer, Python, JS/TS, C, C++, HTML on a
+> Tree-sitter-backed rule framework, with findings surfaced as VS Code diagnostics.
+> Phases 4–7 (interactive graph, dynamic analysis, AI connectors, reports) remain.
 
 ## Architecture
 
@@ -23,8 +23,9 @@ src/
 │   ├── Database.ts
 │   ├── migrations/       v1 initial schema · v2 bookmarks + note provenance
 │   └── repositories/
+├── analysis/             SyntaxEngine (Tree-sitter WASM + null fallback) + RuleBasedPlugin
 ├── plugins/              AuditPlugin contract + PluginManager
-│   └── builtin/          Docker (functional), Ansible, Packer (stubs)
+│   └── builtin/          Docker, Ansible, Packer, Python, JS/TS, C, C++, HTML
 ├── obsidian/             Native Obsidian integration (note types + service)
 ├── services/             AnnotationService (decorations, re-anchoring, providers)
 ├── ui/                   Tree views + hover/CodeLens/decoration providers
@@ -53,6 +54,24 @@ vault following the *5_Knowledges* conventions: a timestamped id, per-type
 subfolder and filename decoration (`{{ … }}`, `== … ==`, `"" … ""`, `@@ … @@`,
 `** … **`, `;; … ;;`), and YAML frontmatter (`rédaction`, per-type tags,
 `Knowledge-index`). All disk access uses `vscode.workspace.fs` [2].
+
+## Phase 3 analyzers
+
+Analyzers are declarative rule sets on a shared `RuleBasedPlugin` base. Each
+declares **regex rules** (an immediate, grammar-free baseline) and optional
+**Tree-sitter query rules** (precise, structural) that activate once the matching
+grammar is present. A `SyntaxEngine` abstraction backs both: `WebTreeSitterEngine`
+(WASM [3]) is the primary implementation, `NullSyntaxEngine` the fallback.
+
+Coverage: Docker (DKR001–003 + base-image graph), Ansible (ANS001–003, guarded),
+Packer/HCL (PKR001–003), Python (PY001–005 + a query rule), JavaScript/TypeScript
+(JS001–005), C and C++ (shared CWE-120/676 libc rules + C++ smells), HTML
+(HTML001–004). Findings are published as VS Code **diagnostics** (squiggles +
+Problems panel) and files are re-analyzed on save.
+
+> Tree-sitter grammars are not vendored; drop the `.wasm` files into `grammars/`
+> (see that folder's README) or set `audit.analysis.grammarsPath`. Analyzers work
+> via regex until then.
 
 ### Privacy (three AI modes)
 
@@ -97,7 +116,7 @@ npm run compile      # tsc -> out/
 
 1. ✅ Architecture, plugins, SQLite, tree views, persistence.
 2. ✅ Annotation engine, advanced bookmarks, knowledge base, Obsidian integration.
-3. ⬜ Ansible/Docker/Packer/Python/JS/C/C++/HTML analyzers (LSP + Tree-sitter).
+3. ✅ Ansible/Docker/Packer/Python/JS/C/C++/HTML analyzers (Tree-sitter + diagnostics).
 4. ⬜ Graph engine + interactive visualization (WebView).
 5. ⬜ Dynamic analysis (Ansible, Docker, QEMU) + linters.
 6. ⬜ AI connectors (local by default, Windsurf on authorization).

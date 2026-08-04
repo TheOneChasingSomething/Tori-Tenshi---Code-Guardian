@@ -2,6 +2,7 @@ import { AuditPlugin, AnalyzableDocument, PluginContext } from './AuditPlugin';
 import { AnalysisResult, emptyAnalysis, Finding } from '../core/Types';
 import { Logger } from '../core/Logger';
 import { Configuration } from '../core/Configuration';
+import { SyntaxEngine } from '../analysis/SyntaxEngine';
 
 /**
  * Registry and orchestrator of analysis plugins.
@@ -16,8 +17,8 @@ export class PluginManager {
   private readonly plugins = new Map<string, AuditPlugin>();
   private readonly context: PluginContext;
 
-  constructor(logger: Logger, config: Configuration) {
-    this.context = { logger, config };
+  constructor(logger: Logger, config: Configuration, syntax: SyntaxEngine) {
+    this.context = { logger, config, syntax };
   }
 
   /** Registers a plugin. A duplicate identifier is rejected. */

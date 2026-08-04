@@ -1,5 +1,51 @@
 # Changelog
 
+## [0.7.0] — Phase 7
+### Added
+- `ReportService` / `ReportModel`: aggregate trust states, diagnostics, annotations, bookmarks and notes; compute coverage.
+- Markdown renderer (opened as a document) and self-contained printable HTML renderer (browser Print -> Save as PDF).
+- `DashboardPanel`: live progress dashboard WebView (state distribution, findings by severity, coverage, counts) with report export, CSP + nonce.
+- Commands `audit.showDashboard`, `audit.generateReport`; media/dashboard.js + dashboard.css.
+
+## [0.6.0] — Phase 6
+### Added
+- AI connector layer: `AiConnector` contract, OpenAI-compatible `chatCompletion` client, prompt builder.
+- Connectors: `LocalConnector` (no inference, deterministic synthesis), `LocalLlmConnector` (Ollama/LM Studio/vLLM), `RemoteAgentConnector` (Windsurf, token from SecretStorage).
+- `AiService`: single choke point enforcing mode selection, exclusion globs (no excluded file reaches any model), remote enable flag, and one-time recorded consent.
+- Commands: `audit.explainSelection`, `audit.reviewFile`, `audit.aiStatus`, `audit.authorizeRemoteAgent`, `audit.setRemoteAgentToken`.
+- Settings: `audit.llm.model`, `audit.remoteAgent.endpoint` (token stored in SecretStorage).
+- AI results open as an untitled Markdown document.
+
+## [0.5.0] — Phase 5
+### Added
+- `ProcessRunner`: safe child-process wrapper (array args, no shell, timeout, ENOENT-aware availability probe).
+- `Linter` framework + `DynamicService`: opt-in external linters with cached availability detection and concurrent runs.
+- Linters: hadolint, eslint, ansible-lint, ruff, cppcheck, shellcheck (JSON or grep-format parsers into Findings).
+- `QemuInspector`: read-only disk-image metadata via `qemu-img info` (no VM boot, no guest execution).
+- Dynamic findings merged into diagnostics through `AnalysisRunner`; `includeDynamic` flag; on-save gated by `audit.dynamic.runOnSave`.
+- Commands `audit.runLinters`, `audit.checkTools`, `audit.inspectImage`.
+- Settings `audit.dynamic.enabled` (default off), `audit.dynamic.runOnSave`, `audit.dynamic.timeoutMs`.
+
+## [0.4.0] — Phase 4
+### Added
+- `GraphService` / `GraphModel`: build the trust graph, filter by state/kind, compute per-node depth (longest path) for the architecture layout.
+- `GraphPanel`: interactive trust-graph WebView with a strict CSP + nonce, loading `media/graph.js` and `media/graph.css` as webview URIs.
+- Dependency-free force-directed canvas graph: state-coloured nodes, force/layered layouts, per-state filters, label search, drag, double-click to open, in-graph state selector.
+- Command `audit.showGraph` and a trust-graph view-title button.
+
+## [0.3.0] — Phase 3
+### Added
+- Syntax-engine abstraction (`SyntaxEngine`) with `WebTreeSitterEngine` (WASM) and `NullSyntaxEngine` fallback.
+- `RuleBasedPlugin` framework: declarative regex rules + optional Tree-sitter query rules.
+- Analyzers: Docker, Ansible, Packer/HCL, Python (+ query rule), JavaScript/TypeScript, C, C++, HTML.
+- Shared unsafe-libc rule set for C/C++ (CWE-120/242/676/78).
+- `DiagnosticsController`: findings surfaced as VS Code diagnostics (Problems panel).
+- `AnalysisRunner`: shared analyze -> persist graph -> publish diagnostics pipeline; re-analyze on save.
+- Settings: `audit.analysis.grammarsPath`, `audit.analysis.analyzeOnSave`.
+- `grammars/` folder with fetch instructions.
+### Changed
+- Built-in plugins refactored onto the rule framework; `PluginContext` now carries the syntax engine.
+
 ## [0.2.0] — Phase 2
 ### Added
 - Annotation engine: gutter/overview-ruler decorations, hover provider, CodeLens (edit/history/delete).

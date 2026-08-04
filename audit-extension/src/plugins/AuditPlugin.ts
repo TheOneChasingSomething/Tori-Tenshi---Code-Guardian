@@ -1,6 +1,7 @@
 import { AnalysisResult } from '../core/Types';
 import { Logger } from '../core/Logger';
 import { Configuration } from '../core/Configuration';
+import { SyntaxEngine } from '../analysis/SyntaxEngine';
 
 /**
  * Context provided to each plugin at initialization. It exposes shared services
@@ -10,6 +11,8 @@ import { Configuration } from '../core/Configuration';
 export interface PluginContext {
   readonly logger: Logger;
   readonly config: Configuration;
+  /** Structural parsing backend (Tree-sitter or a null fallback). */
+  readonly syntax: SyntaxEngine;
 }
 
 /** Document to analyze, passed to the plugin in a neutral form. */

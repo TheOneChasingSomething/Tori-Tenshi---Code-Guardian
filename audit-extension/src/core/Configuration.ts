@@ -28,6 +28,16 @@ export class Configuration {
     return this.cfg().get<string>('llm.localEndpoint', 'http://127.0.0.1:11434');
   }
 
+  /** Model name passed to the local model or remote agent. */
+  get llmModel(): string {
+    return this.cfg().get<string>('llm.model', 'llama3.1');
+  }
+
+  /** Base URL of the remote agent (Windsurf). Empty disables it. */
+  get remoteAgentEndpoint(): string {
+    return this.cfg().get<string>('remoteAgent.endpoint', '');
+  }
+
   get remoteAgentEnabled(): boolean {
     return this.cfg().get<boolean>('remoteAgent.enabled', false);
   }
@@ -56,6 +66,35 @@ export class Configuration {
   /** Name of the index note to reference in each note's Knowledge-index field. */
   get obsidianKnowledgeIndex(): string {
     return this.cfg().get<string>('obsidian.knowledgeIndex', '');
+  }
+
+  // --- Analysis ------------------------------------------------------------
+
+  /** Absolute path to the Tree-sitter `.wasm` grammars (empty = bundled dir). */
+  get grammarsPath(): string {
+    return this.cfg().get<string>('analysis.grammarsPath', '');
+  }
+
+  /** Re-analyze a document each time it is saved. */
+  get analyzeOnSave(): boolean {
+    return this.cfg().get<boolean>('analysis.analyzeOnSave', true);
+  }
+
+  // --- Dynamic analysis ----------------------------------------------------
+
+  /** Master switch for running external linters and the QEMU inspector. */
+  get dynamicEnabled(): boolean {
+    return this.cfg().get<boolean>('dynamic.enabled', false);
+  }
+
+  /** Also run dynamic analysis on save (only if dynamic analysis is enabled). */
+  get dynamicRunOnSave(): boolean {
+    return this.cfg().get<boolean>('dynamic.runOnSave', false);
+  }
+
+  /** Per-process timeout for external tools, in milliseconds. */
+  get dynamicTimeoutMs(): number {
+    return this.cfg().get<number>('dynamic.timeoutMs', 20000);
   }
 
   /**

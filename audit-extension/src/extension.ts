@@ -3,12 +3,7 @@ import { Logger } from './core/Logger';
 import { EventBus } from './core/EventBus';
 import { Configuration } from './core/Configuration';
 import { relPath } from './core/workspacePath';
-import { AuditDatabase } from './persistence/Database';
-import { AnnotationRepository } from './persistence/repositories/AnnotationRepository';
-import { TrustNodeRepository } from './persistence/repositories/TrustNodeRepository';
-import { TrustEdgeRepository } from './persistence/repositories/TrustEdgeRepository';
-import { KnowledgeRepository } from './persistence/repositories/KnowledgeRepository';
-import { BookmarkRepository } from './persistence/repositories/BookmarkRepository';
+import { openStorage } from './persistence/storage';
 import { SyntaxEngine } from './analysis/SyntaxEngine';
 import { WebTreeSitterEngine } from './analysis/WebTreeSitterEngine';
 import { PluginManager } from './plugins/PluginManager';
@@ -52,20 +47,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const config = new Configuration();
   const bus = new EventBus();
 
-  // --- Persistence ---------------------------------------------------------
-  const storageDir = context.globalStorageUri.fsPath;
-  const db = AuditDatabase.open(storageDir, logger);
-  context.subscriptions.push({ dispose: () => db.close() });
+  // --- Persistence (backend selected by configuration) ---------------------
+  const storage = await openStorage(config, context.globalStorageUri.fsPath, logger);
+  context.subscriptions.push({ dispose: () => void storage.persist().finally(() => storage.close()) });
 
-  const annotations = new AnnotationRepository(db);
-  const nodes = new TrustNodeRepository(db);
-  const edges = new TrustEdgeRepository(db);
-  const knowledge = new KnowledgeRepository(db);
-  const bookmarks = new BookmarkRepository(db);
+  const { annotations, nodes, edges, knowledge, bookmarks } = storage;
 
   // --- Analysis backend ----------------------------------------------------
-  const grammarsDir = config.grammarsPath || WebTreeSitterEngine.defaultGrammarsDir(context.extensionUri);
-  const syntax: SyntaxEngine = new WebTreeSitterEngine(grammarsDir, logger);
+  const bundledGrammarsDir = WebTreeSitterEngine.defaultGrammarsDir(context.extensionUri);
+  const syntax: SyntaxEngine = new WebTreeSitterEngine(config.grammarsPath, bundledGrammarsDir, logger);
 
   const plugins = new PluginManager(logger, config, syntax);
   const builtins: AuditPlugin[] = [
@@ -264,7 +254,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // --- Commands ------------------------------------------------------------
   registerCommands(context, { annotations, nodes, edges, knowledge, bookmarks, plugins, obsidian, runner, bus, logger });
 
-  logger.info(`Audit Extension activated (AI: ${config.llmMode}, Obsidian: ${obsidian.isConfigured() ? 'on' : 'off'}, grammars: ${grammarsDir}).`);
+  logger.info(`Audit Extension activated (AI: ${config.llmMode}, Obsidian: ${obsidian.isConfigured() ? 'on' : 'off'}, storage: ${config.storageBackend}, grammars: ${config.grammarsPath || 'auto'}).`);
 }
 
 export function deactivate(): void {

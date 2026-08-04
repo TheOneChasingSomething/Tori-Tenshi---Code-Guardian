@@ -2,7 +2,7 @@
   "name": "audit-extension",
   "displayName": "Audit Extension",
   "description": "Assisted code review and security auditing with a plugin-oriented architecture (Ansible, Docker, Packer, Python, JS, C/C++, HTML).",
-  "version": "0.7.0",
+  "version": "0.8.1",
   "publisher": "audit-lab",
   "license": "MIT",
   "engines": {
@@ -121,6 +121,24 @@
           "type": "string",
           "default": "",
           "description": "Base URL of the remote agent (Windsurf), OpenAI-compatible. Empty disables it."
+        },
+        "audit.storage.backend": {
+          "type": "string",
+          "enum": [
+            "better-sqlite3",
+            "sql.js"
+          ],
+          "enumDescriptions": [
+            "Native SQLite (fast; recompiled on install).",
+            "Pure-WASM SQLite (portable; no native build)."
+          ],
+          "default": "better-sqlite3",
+          "description": "Persistence backend engine."
+        },
+        "audit.storage.file": {
+          "type": "string",
+          "default": "",
+          "description": "Explicit database file path. Empty uses the extension global storage."
         }
       }
     },
@@ -349,5 +367,9 @@
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",
     "typescript": "^5.4.0"
+  },
+  "optionalDependencies": {
+    "sql.js": "^1.14.1",
+    "tree-sitter-wasms": "^0.1.11"
   }
 }

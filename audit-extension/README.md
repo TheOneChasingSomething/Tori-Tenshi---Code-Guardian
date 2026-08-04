@@ -18,10 +18,14 @@ src/
 ├── extension.ts          Entry point: activation + dependency injection
 ├── core/                 Types, Logger, EventBus, Result, Configuration
 ├── models/               Domain entities (Annotation, TrustNode/Edge, KnowledgeNote, Bookmark)
-├── persistence/          SQLite database, migrator, repositories
-│   ├── Database.ts
+├── persistence/          Backend-agnostic storage
+│   ├── SqlDriver.ts      port: any SQL engine
+│   ├── drivers/          BetterSqliteDriver (native) · SqlJsDriver (WASM)
+│   ├── ports.ts          repository interfaces + Storage bundle (any backend)
+│   ├── storage.ts        factory: pick driver from config, assemble Storage
+│   ├── Database.ts       migrations + statement facade over a SqlDriver
 │   ├── migrations/       v1 initial schema · v2 bookmarks + note provenance
-│   └── repositories/
+│   └── repositories/     SQL implementations of the ports
 ├── analysis/             SyntaxEngine (Tree-sitter WASM + null fallback) + RuleBasedPlugin
 ├── graph/                GraphService (build, filter, depth) + GraphModel
 ├── dynamic/              ProcessRunner, Linter framework, DynamicService, QemuInspector
@@ -73,9 +77,10 @@ Packer/HCL (PKR001–003), Python (PY001–005 + a query rule), JavaScript/TypeS
 (HTML001–004). Findings are published as VS Code **diagnostics** (squiggles +
 Problems panel) and files are re-analyzed on save.
 
-> Tree-sitter grammars are not vendored; drop the `.wasm` files into `grammars/`
-> (see that folder's README) or set `audit.analysis.grammarsPath`. Analyzers work
-> via regex until then.
+> Grammars resolve automatically, in order: `audit.analysis.grammarsPath` → the
+> `tree-sitter-wasms` package (an optional dependency, the WASM counterpart of the
+> nvim-treesitter parser set) → the bundled `grammars/` folder. The regex baseline
+> always runs, so analyzers keep working when no grammar is present.
 
 ## Phase 4 trust graph
 
@@ -160,6 +165,22 @@ Annotations view title; generate reports via **Audit: Generate report**.
 
 `audit.exclusionGlobs` (default `*.pem`, `secrets.yml`, `inventory`, `.env`) are
 never transmitted externally (`Configuration.isTransmittable`).
+
+## Storage backends (modular)
+
+Persistence is decoupled at two levels. Repositories depend only on a small
+`SqlDriver` port, so the SQL engine is swappable via `audit.storage.backend`:
+
+- **better-sqlite3** (default) — native, fast, writes through (WAL);
+- **sql.js** — pure-WASM SQLite, no native build, held in memory and exported to
+  disk on flush.
+
+Both are optional dependencies; if sql.js is selected but missing, the factory
+falls back to the native driver. One level up, every consumer depends on the
+repository interfaces in `ports.ts` (`AnnotationStore`, `TrustNodeStore`, …)
+bundled as a `Storage`, so an entirely non-SQL backend (REST, document store, an
+in-memory fake for tests) is added by implementing those interfaces — no change
+to services or UI.
 
 ## Install and run
 
